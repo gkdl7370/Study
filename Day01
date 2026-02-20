@@ -7,17 +7,17 @@ OOP(Object-Oriented Programming)란?
 OOP 4대 요소와 Data-Flux 실전 사례
 ① 추상화 (Abstraction)
 
-개념: 복잡한 내부 구현은 숨기고, 외부에는 핵심적인 기능(인터페이스)만 노출하는 것
+개념: 복잡한 내부 구현은 숨기고 외부에는 핵심적인 기능(인터페이스)만 노출하는 것
 
 실전 적용: ItemWriter 인터페이스 사용
 
-구체적 예시: 스프링 배치는 BulkDataWriter가 내부적으로 JdbcTemplate을 쓰는지, JPA를 쓰는지 모른다. 오직 write()라는 추상화된 규격만 보고 실행
+구체적 예시: 스프링 배치는 BulkDataWriter가 내부적으로 JdbcTemplate을 쓰는지 JPA를 쓰는지 모른다. 오직 write()라는 추상화된 규격만 보고 실행
 
 효과: 저장 기술을 변경해도 전체 배치 공정(JobConfig)은 수정할 필요가 없음
 
 ② 캡슐화 (Encapsulation)
 
-개념: 객체의 데이터(상태)를 외부에서 함부로 조작하지 못하게 보호하고 오직 객체가 허락한 메서드를 통해서만 상태를 변경하게 만드는 것.
+개념: 객체의 데이터(상태)를 외부에서 함부로 조작하지 못하게 보호하고 오직 객체가 허락한 메서드를 통해서만 상태를 변경하게 만드는 것
 
 실전 적용: DataPoint 엔티티의 무분별한 Setter 제거 및 의미 있는 비즈니스 메서드 노출
 
@@ -41,7 +41,7 @@ OOP 4대 요소와 Data-Flux 실전 사례
 
 실전 적용: Processor 내의 List<DataValidator> 주입
 
-구체적 예시: Processor는 validators 리스트 안의 구체 타입을 모름. 하지만 루프를 돌며 isValid()를 호출하면 각 객체가 자신만의 방식으로 검증을 수행함
+구체적 예시: Processor는 validators 리스트 안의 구체 타입을 모름 하지만 루프를 돌며 isValid()를 호출하면 각 객체가 자신만의 방식으로 검증을 수행함
 
 효과: Processor 코드를 수정하지 않고도 새로운 검증 규칙을 확장 가능함
 
