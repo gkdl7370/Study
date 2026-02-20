@@ -1,0 +1,138 @@
+[OOP 4대 요소 실전 적용]
+OOP(Object-Oriented Programming)란?
+
+데이터와 그 데이터를 처리하는 로직을 객체(Object)라는 단위로 묶어 시스템을 구축하는 방식이다.
+시스템을 교체 가능한 부품(Component)들의 집합으로 만들어 유지보수 비용을 최소화하는 설계 전략이다.
+
+OOP 4대 요소와 Data-Flux 실전 사례
+① 추상화 (Abstraction)
+
+개념: 복잡한 내부 구현은 숨기고, 외부에는 핵심적인 기능(인터페이스)만 노출하는 것
+
+실전 적용: ItemWriter 인터페이스 사용
+
+구체적 예시: 스프링 배치는 BulkDataWriter가 내부적으로 JdbcTemplate을 쓰는지, JPA를 쓰는지 모른다. 오직 write()라는 추상화된 규격만 보고 실행
+
+효과: 저장 기술을 변경해도 전체 배치 공정(JobConfig)은 수정할 필요가 없음
+
+② 캡슐화 (Encapsulation)
+
+개념: 데이터와 로직을 하나로 묶고, 내부 상태를 외부에서 직접 건드리지 못하게 보호하는 것
+
+실전 적용: DataPointService 및 DataPoint 엔티티의 정보 은닉
+
+구체적 예시: registerDataPoint() 메서드 내부에 "음수 금지" 비즈니스 규칙을 숨김. 외부에서는 내부 구현을 몰라도 메서드만 호출하면 됨
+
+효과: 검증 로직이 변경될 때 해당 서비스만 수정하면 되므로 수정 여파가 시스템 전체로 퍼지지 않음
+
+③ 상속 (Inheritance)
+
+개념: 기존 클래스의 기능을 물려받아 새로운 기능을 추가하거나 확장하는 것
+
+실전 적용: DataValidator를 구현한 각 검증기 클래스들
+
+구체적 예시: NegativeValidator, RangeValidator는 모두 DataValidator라는 부모 규격을 구현하여 각자의 검증 로직을 수행함
+
+효과: 공통된 규격(isValid())을 공유하므로 새로운 규칙을 추가할 때 규격에 맞춰 로직만 구현하면 됨
+
+④ 다형성 (Polymorphism)
+
+개념: 하나의 인터페이스나 클래스가 상황에 따라 여러 가지 형태의 객체로 동작하는 것
+
+실전 적용: Processor 내의 List<DataValidator> 주입
+
+구체적 예시: Processor는 validators 리스트 안의 구체 타입을 모름. 하지만 루프를 돌며 isValid()를 호출하면 각 객체가 자신만의 방식으로 검증을 수행함
+
+효과: Processor 코드를 수정하지 않고도 새로운 검증 규칙을 확장 가능함
+
+결론: 왜 유지보수 비용이 줄어드는가?
+
+OOP 4대 요소는 코드 간 의존성(Coupling)을 낮추는 도구임
+
+추상화와 다형성을 통해 부품 교체가 쉬워짐
+
+캡슐화를 통해 오류 전파를 차단함
+
+상속(또는 인터페이스 기반 구조)을 통해 재사용성을 높임
+
+이 구조는 새로운 기능 추가나 기존 기능 수정 시 개발 비용을 낮추는 효과가 있음
+
+[Data-Flux 수정 방안]
+
+1. 아키텍처 핵심 전략: 투-트랙(Two-Track) 모델
+
+시스템 목적에 따라 데이터 경로를 이원화하여 성능(Throughput)과 안정성(Consistency)을 분리 관리함
+
+Batch Path: 엑셀 등 대량 데이터 적재용. 편리함(JPA)보다 효율(JDBC)을 선택한 성능 중심 경로
+
+API Path: 실시간 데이터 수집용. 속도보다 데이터 무결성과 비즈니스 로직 보호를 우선시한 경로
+
+2. 추상화의 구체적 적용
+
+추상화는 구체적인 방법(How)을 숨기고 해야 할 일(What)만 정의하는 것
+
+① 구조적 추상화: 인터페이스 (ItemWriter)
+
+구체적 예시: 스프링 배치의 ItemWriter 인터페이스를 구현하여 BulkDataWriter를 만듦
+
+효과: 스프링 배치는 내부 저장 기술(JdbcTemplate인지 JPA인지)을 모름 오직 write() 규격만 보고 실행함. 저장 기술을 바꿔도 상위 설정은 변경되지 않음
+
+② 연산적 추상화: Java Stream (flatMap)
+
+구체적 예시:
+
+// 중첩된 리스트(List<List<DataPoint>>)를 1차원 리스트로 평탄화
+List<DataPoint> allPoints = chunk.getItems().stream()
+    .flatMap(List::stream)
+    .collect(Collectors.toList());
+
+flatMap 내부 구현은 숨기고 “평탄화한다”는 의도만 표현함
+
+효과: 복잡한 이중 for-loop라는 구체적 행위를 flatMap이라는 추상적 도구 뒤로 숨겨 코드 가독성을 높임
+
+3. 책임 분리(Separation of Concerns)의 구체적 적용
+
+하나의 클래스가 여러 책임을 갖지 않도록 기능을 분리하는 전략
+
+① 가공과 검증의 분리 (Validator 패턴)
+
+현상: Processor가 데이터 분해(1:24)와 유효성 검사(음수 체크 등)를 모두 수행하면 코드가 비대해짐
+
+해결: 검증 로직을 별도 Validator 클래스로 분리함
+
+예시:
+// 1. 책임 정의 (Interface)
+public interface DataValidator { boolean isValid(Double value); }
+
+// 2. 개별 책임 구현 (Implementation)
+@Component
+public class NegativeValidator implements DataValidator { ... } // 음수 체크만 담당
+
+// 3. 책임의 조립 (Processor)
+// Processor는 "데이터 분해"에 집중하고, 검증은 주입받은 Validator 리스트에 위임
+validators.stream().allMatch(v -> v.isValid(value));
+
+Processor는 검증 로직을 직접 구현하지 않고 주입받은 Validator 리스트에 위임함.
+
+② 인프라 오버헤드 분리 (Service vs Component)
+
+@Service(무거운 간부: DataPointService): 트랜잭션 관리, DB 저장 등 비즈니스 워크플로우 책임을 가짐. 반복 호출 시 오버헤드가 발생할 수 있음
+
+@Component(경량 도구: Validator): 순수 기능 판단 역할을 수행함. 배치 반복문 내부에서 사용하기 적합함
+
+@Repository(창고 지기: JPA): JPA 영속성 컨텍스트를 가동함. 대량 적재 시 관리 비용이 증가할 수 있음
+
+전략: 배치 경로에서는 무거운 Service 호출을 피하고 경량 Validator(@Component)만 사용하여 오버헤드를 최소화함.
+
+4. 왜 JPA 대신 JDBC인가? (성능 리스크 관리)
+JPA IDENTITY 전략 X
+
+메커니즘: @GeneratedValue(strategy = GenerationType.IDENTITY)는 INSERT 이후에야 ID를 알 수 있음
+
+결과: 데이터 건수만큼 DB와 통신이 발생할 수 있음 (100개를 넣으려면 자바 <-> DB 통신을 100번 왕복)
+
+JDBC Batch Update O
+
+메커니즘: jdbcTemplate.batchUpdate()로 데이터를 Chunk 단위로 모아 한 번에 전송함
+
+효과: 여러 번의 Round-trip을 한 번으로 줄여 대량 적재 시 성능을 개선함 (100번 왕복할 일을 단 1번의 통신으로 해결)
