@@ -1,0 +1,99 @@
+  Java Collection (equals/hashCode) "HashMap에서 데이터가 꼬이지 않게 관리하는 법"
+  실무에서 맨날 쓰는 Map, Set 정확하게 다시 정리해보자
+    
+  HashMap은 매우 단순하다 hashCode로 위치 정하고 equals로 같은지 확인한다
+  그럼 나는 equals랑 hashCode를 구현해서 정의만 해주면 된다 근데 항상 뭔가 헷갈린다
+
+  equals와 hashCode는 자바 컬렉션의 핵심이자 데이터 정합성을 결정짓는 요소 - 두 객체가 "진짜로 같은지"를 판단하는 두가지 기준
+  - equals(): 두 객체가 논리적으로 같은지 비교 (내용물이 같은가) *null은 false다
+  - hashCode(): 객체를 저장할 위치를 결정하는 주소 (어디에 있는가)
+  예를 들어 "주민등록번호는 어디서든 나를 가르킨다 고로 주민등록번호가 같으면 같은 사람이다" 자바에서도 이 둘은 세트로 움직인다
+
+  1.equals와 hashCode를 같이 써야 하는 이유
+    HashMap이나 HashSet에 데이터를 넣을 때 자바는 두 단계를 거쳐 중복 확인을 함
+    (step 1) hashCode() - 객체의 지문을 숫자로 변환하여 저장할 구역을 정함 (아파트 동 번호)
+    (step 2) equals() - 구역 안에 있는 객체들과 실제 내용물을 1:1로 비교 (동 안에서 집 호수 찾기)
+    - equal가 ture면 hashCode도 같아야 한다
+    - hashCode가 같다고 equals가 반드시 true일 필요는 없다. (충돌 허용)
+    
+  예를 들어
+  1. 게이트웨이로 들어오는 SensorPacket이 네트워크 장애로 인해 중복해서 들어올 경우
+    (초반에 제대로 파악하지 못하고 설계한 방식)
+    //SensorPacket.java(Lombok @Data를 사용안함)
+    public class SensorPacket{
+      private String deviceId;
+      private String timestamp;
+      //equals, hashCode 안씀
+    }
+
+    //실행 코드
+    Set<SensorPacket> packetSet = new HashSet<>();
+    SensorPacket p1 = new SensorPacket("DP01", "2026022516270000");
+    SensorPacket p2 = new SensorPacket("DP01", "2026022516270000");
+  
+    packetSet.add(p1);
+    packetSet.add(p2);
+  
+    System.out.println(packetSet.size()); // 결과: 2 (중복 제거 실패)
+  
+    (현재 설계)
+    @Data // 이 안에 @EqualsAndHashCode가 포함되어 있음 *키를 하나만 쓰고싶으면 @EqualsAndHashCode(of = "dviceId")
+    public class SensorPacket{
+      private String dviceId;
+      private String timestamp;
+    }
+  
+    System.out.println(packetSet.size()); // 결과: 1
+
+  2. 배치 처리 도중 동일한 지점(originId)의 동일 시각(occurredAt) 데이터가 들어온 경우
+    (Lombok을 쓰지 않고 직접 구현한다면)
+    public calss DataPoint {
+      public String originId;
+      public String occurredAt;
+  
+      // 1. hashCode - 두 필드를 조합해 고유한 주소값을 생성
+      @Override
+      public int hashCode() {
+        return Objects.hash(originId, occurredAt);
+      }
+
+      // 2. equals - 주소가 같은 구역에 들어왔을 때 필드 값이 진짜 같은지 확인
+      @Override
+      public boolean equals(Object o) {
+        if(this == o) return true;
+        if(!(o instanceof DataPoint)) return false;
+        DataPoint dataPoint = (DataPoint) o;
+        return Objects.equals(originId, dataPoint.originId) &&
+            Objects.equals(occurredAt, dataPoint.occurredAt);
+      }
+    }
+
+  [요약]
+  equals만 만들고 hashCode를 안만들면?
+    : equals로는 같다고 나오지만 hashCode가 달라서 서로 다른 구역에 들어감
+    : 결과적으로 HashMap에서 get()을 해도 데이터를 못찾는 현상이 발생
+
+  hashCode만 만들고 equals를 안만들면?
+    : 같은 구역에는 모였으나 그 안에서 equals가 제대로 찾지를 못함
+    : 구역에 데이터가 계속 쌓여서 성능 저하 발생 - 해시 충돌 현상
+
+  hashCode는 데이터를 분류하는 지역 번호이고 equals는 그 안에서 대조하는 실물 확인으로 생각하자
+
+  객체 동일성
+     ├─ ==  (주소 비교)
+     └─ equals() (논리적 동일성)
+  
+  논리적 동일성 판단을 위해
+     ├─ equals()
+     └─ hashCode()
+  
+  이 둘이
+     ↓
+  HashMap / HashSet 동작의 핵심
+     ↓
+  데이터 정합성 결정
+     ↓
+  실무 버그 / 캐시 문제 / 중복 문제 방지
+      
+  
+    
