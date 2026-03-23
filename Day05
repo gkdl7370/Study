@@ -1,0 +1,57 @@
+예외 처리(Exception) - Checked vs Unchecked
+
+1.예외의 계층 구조
+자바에서 발생하는 모든 문제는 [Throwable] 클래스를 상속받는다.
+  Error: 시스템 레벨의 심각한 문제(메모리 부족 등) - 개발자가 코드로 수습 불가능
+  Exception: 개발자가 만든 애프릴케이션 로직에서 발생하는 문제 - 코드로 수습 가능
+    *Checked Exception: 컴파일 시점에서 체크 반드시 try-catch나 throws가 필요
+      ex) IOException,SQLException
+    *Unchecked Exception(RuntimeException): 실행 지점에서 발생함 처리가 강제되지 않음
+      ex) NullPointerException,IllegalArgumentException
+
+
+2.예시 로직
+[Checked] ConfigManager 자가 치유 로직
+-파일 읽는 작업은 실패 확률이 있지만 이로 인해서 서버가 죽으면 안된다.
+  public void init() {
+      try {
+          loadDeviceInventory("device-inventory.csv")
+      } catch (IOException e) {
+          // [전략] 예외를 잡아서(Catch) 시스템이 중단되지 않게 방어함
+          log.error("장비 목록 로드 실패! 기본 장비로 변경", e)
+          deviceInventory.put("DEFAULT", "SITE_001") // 대체 동작 수행
+      }
+  }
+
+[Unchecked] 방어적 설계
+-잘못된 패킷이 들어왔을 때 예외를 던져서 워커 스레드를 죽이는 대신 안전한 값을 반환하여 흐름 유지
+  public static String readAscii(ByteBuf buffer, int index, int length) {
+    // [전략] 예외 발생 조건을 미리 검사(Validation)하여 RuntimeException 차단
+    if (buffer.readableBytes() < index + length) {
+        log.warn("패킷 길이 부족: {} byte 요청했으나 부족함", length)
+        return "---" // 예외를 던지는 대신 빈 문자열 반환 (Graceful Degradation)
+    }
+    return buffer.toString(index, length, StandardCharsets.US_ASCII).trim()
+}
+
+3.실전 사례
+-커스텀 예외를 통한 결함 허용
+  *배치 작업 중 수백만 건 중 한두 건의 에러로 전체 시스템이 멈추면 안되기 때문에 별도의 처리가 필요
+  // 1. 커스텀 언체크 예외 정의
+  public class InvalidMetricException extends RuntimeException {
+      public InvalidMetricException(String message) {
+          super(message)
+      }
+  }
+  
+  // 2. Validator에서 사용
+  if (value < 0) {
+      throw new InvalidMetricException("음수 데이터 발견")
+  }
+
+-Spring Batch 설정과 연동
+  .faultTolerant()
+  .skip(InvalidMetricException.class) // 특정 에러 발생 시 해당 데이터만 건너뜀
+  .skipLimit(100) // 100번까지는 봐줌
+
+  
