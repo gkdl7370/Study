@@ -1,0 +1,34 @@
+매일 보지만 매번 헷갈리는 HTTP Status Code 표준
+
+1.상태 코드의 5가지 그룹
+-번호의 첫자리가 응답의 성격을 나타냄
+  2xx(Success): 성공
+  3xx(Redirection): 주소가 바뀌었어
+  4xx(Client Error): 너가 뭔가를 잘못 보냈어
+  5xx(Server Error): 내가 뭔가 고장 났어
+
+2.실무에서 자주 쓰는 코드
+  -200 OK: 가장 일반적인 성공
+    ex) 데이터 조회 성공 OR 수정 성공
+  -201 Created: POST 요청으로 새로운 자원을 만들었을 때 사용
+    ex) 새 센서 등록 완료
+  -204 No Content: 요청 성공 but return할 데이터는 없음
+
+  -400 Bad Request: 파라미터가 잘못됨
+  -401 Unauthorized: (인증실패) 로그인이 안 되어 있거나 토큰이 만료 된 상황
+  -403 Forbidden: (권한없음) 누구지는 알지만 권한은 없음
+    ex) 관리자 페이지에 일반 유저가 들어온 경우
+  -404 Not Found: 요청한 주소나 리소스가 없음
+  -409 Conflict: 서버의 현재 상태와 충돌
+    ex) 이미 존재하는 아이디로 가입 시도
+
+  -500 Internal Server Error: 서버 내부 로직 에러
+  -503 Service Unabailable: 서버가 일시적으로 요청을 처리 못하는 상황(과부화 or 점검)
+
+    
+  {
+  "status": 400,
+  "code": "INVALID_DEVICE_ID",
+  "message": "장비 ID는 8자리 숫자여야 합니다.",
+  "timestamp": "20XX-XX-XXT12:00:00"
+}

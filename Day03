@@ -1,0 +1,56 @@
+Spring IoC/DI & 리플렉션 - 스프링은 어떻게 내가 만든 Valiator List를 알아서 주입해주는가?
+*스프링으로 업무를 그렇게 많이 처리했는데도 여태 스프링에서 제공하는 기능 중 하나라고만 알고있었지 정확한 정의와 역할을 몰랐다*
+
+1. 스프링 프레임워크(Spring Framework): 거대한 자동화 공장
+- 개념: 자바 개발을 편하게 만들어주는 '도구 모음집'이자 '자동화 공장 시스템'
+- 쉬운 예시: 성을 만드는데 벽돌을 하나하나 깎아서 만드는게 아니라 이미 만들어진 표준 공장의 라인을 빌려 써서 만드는 것과 같음
+- 내가 만든 ExcelItemReader나 BulkDataWriter 같은 부품들을 스프링이라는 공장 라인에 넣으면 스프링이 알아서 동작 시켜주고 가동시킨다는 개념
+
+2. 제어의 역전(IoC: Inversion of Control)
+- 개념: 객체의 생성과 관리 주도권(제어권)을 개발자가 아닌 프레임워크(Spring)가 가져가는 것
+- 쉬운 예시: 식당에서 손님이 직접 주방에 들어가서 요리하는게 아니라 요리사에게 부탁하면 요리가 나오는 것과 같음
+- 과거: SeoulValidator s = new SeoulValidator(); 이렇게 직접 객체를 만들었는데
+  IoC적용:클래스위에 @Component를 적어두면 스피링이 알아서 객체를 생성
+- 효과: 개발자는 부품만 제작하고 부품의 생명주기 관리는 시스템에게 맡겨 실수를 줄임
+- 예시 코드
+  (직접 생성)
+  // Main이나 Controller에서 개발자가 직접 일일이 만듦
+  DataValidator s = new SeoulValidator();
+  DataValidator j = new JeonbukValidator();
+  DataDecompositionProcessor processor = new DataDecompositionProcessor(Arrays.asList(s, j));
+
+  (IoC - 스프링이 제어)
+  @Component
+  public class SeoulValidator implements Datavalidator { ... } // @Component 붙여두기
+  // 직접 new를 호출 할 필요가 없음
+
+3. 의존성 주입(DI)
+- 개념: 어떤 객체가 일을 할 때 필요한 다른 객체를 외부에서 주입 받는 방식
+- 쉬운 예시: 컴퓨터를 샀는데 내가 전선이나 인터넷선을 직접 만드는게 아니라 준비된 플러그를 꽂기만 하면 작동하는 것과 같음
+- DataDecompositionProcessor가 검증을 하려면 DataVlidator리스트가 필요함
+  이때 내가 직접 리스트를 채우는게 아니라 생성자에 List<DataValidator> validators라고 적어두기만 하면 스프링이 내가 만든 검증기들을 찾아와서 리스트를 주입해줌
+- 예시 코드
+  @Component
+  public class DataDecompositionProcessor{
+    private final List<DataValidator> validators;
+
+    // DataDecompositionProcessor를 만들때 DataValidator 리스트를 받아서 내부 변수에 저장한다
+    // 스프링이 이과정에서 '리스트가 필요하구나'라고 판단하고 창고에 있는 DataValidator를 가진 애들을 다 꺼내서 넣어
+    public DataDecompositionProcessor(List<DataValidator> validators){
+      this.validators = validators;
+    }
+  }
+
+4.리플랙션(Reflection)
+- 개념: 프로그램이 실행 중일 때(Runtime) 자신의 코드 정보를 들여다보고 조작하는 자바 기술
+- 작동원리: 프로그램이 실행될 때 스프링이 리플렉션이라는 돋보기를 들고 소스 코드를 흝음 -> 이 클래스는 뭘까? -> 위에 @Component가 붙어 있네? -> 리플렉션으로 이 클래스의 설계도를 읽고 객체를 생성
+- 내가 새로운 Validator를 만들고 파일 추가만 해도 스프링의 리플렉션이 자동으로 시스템에 연결해줌
+
+[스프링이  List<DataValidator>를 채우는 실제 단계]
+1. [리플렉션 가동] 스프링이 돋보기 들고 프로젝트 안의 모든 클래스 검사
+2. [컴포넌트 스캔] 클래스 머리 위에 @Component가 붙은 것들 체크
+3. [빈(Bean) 등록] 체크한 것들을 실제로 객체로 만들어서 창고(ApplicationContext)에 보관
+4. [자동조립] Processor를 만들 때 "여기서 DataValidator 검증이 필요하네? 라고 판단하여 창고에 있는 리스트들을 담아 꽂음
+
+[요약]
+개발자는 부품(Class)을 만들고 어노테이션(@)으로 이름표를 붙인다 그러면 스프링은 리플렉션으로 이를 찾아내어(IoC) 필요한 곳에 주입(DI)해준다

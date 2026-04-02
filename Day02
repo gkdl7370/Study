@@ -1,0 +1,96 @@
+1. 추상 클래스 vs 인터페이스 실전 적용
+
+[인터페이스 (Interface)]
+
+개념: 객체가 무엇을 할 수 있는지 정의하는 '자격증' 또는 '계약서'
+
+실전 적용: ItemReader, ItemWriter 규격 정의
+
+구체적 예시: 하천 데이터 검증을 위해 DataValidator 인터페이스를 만들고 모든 지역 검증기가 isValid() 메서드를 가지도록 강제함
+
+효과: 메인 엔진인 Processor가 구체적인 지역 로직을 몰라도 동일한 방식으로 일을 시킬 수 있음
+
+[추상 클래스 (Abstract Class)]
+
+개념: 공통 로직을 미리 구현해 둔 '미완성 설계도' 또는 '뼈대'
+
+실전 적용: AbstractValidator를 통한 공통 기능 상속
+
+구체적 예시: 모든 검증기에서 반복되는 '에러 로그 출력'이나 '검증 시간 기록' 기능을 부모 클래스에 한 번만 작성함
+
+효과: 자식 클래스(서울, 전남 등)에서 중복 코드를 작성할 필요가 없어 생산성이 높아짐
+
+2. 3층 구조 아키텍처 (Triple Layer Design)
+
+- 1층: 인터페이스 (규격 정의)
+
+역할: 시스템 전체의 통합 간판 역할
+
+실전 사례: DataValidator 인터페이스 선언
+
+public interface DataValidator {
+    // 무엇을(What) 할지만 정의
+    boolean isValid(Double value)
+    String getRegionCode()
+}
+
+
+효과: 어떤 새로운 지역 규칙이 추가되어도 동일한 타입으로 관리 가능
+
+- 2층: 추상 클래스 (공통 로직 추상화)
+
+역할: 중복되는 '팔다리'를 미리 만들어주는 단계
+
+실전 사례: AbstractValidator가 인터페이스를 구현(implements)하면서 로그 전처리 로직을 포함함
+
+public abstract class AbstractValidator implements DataValidator {
+    // 모든 자식이 공통으로 가질 '상태'
+    protected int errorCount = 0
+
+    // 모든 자식이 똑같이 쓸 '공통 기능'
+    protected void logError(String region, Double value) {
+        errorCount++
+        System.out.println("[" + region + "] 데이터 오류 발생: " + value)
+    }
+
+    // 알맹이 로직(isValid)은 아직 모르니 자식에게 맡긴다
+    @Override
+    public abstract boolean isValid(Double value)
+}
+
+
+효과: 코드 수정 시 부모 클래스 한 곳만 고치면 모든 지역에 적용됨
+
+- 3층: 구현체 (상세 비즈니스 구현)
+
+역할: 지역별 특수 규칙(7개 규칙, 4개 규칙 등)을 실제로 수행하는 단계
+
+실전 사례: SeoulValidator, JeonbukValidator 등 실제 클래스 파일 제작
+
+public class SeoulValidator extends AbstractValidator {
+    @Override public String getRegionCode() { return "SEOUL" }
+
+    @Override
+    public boolean isValid(Double value) {
+        // 서울만의 7개 규칙 검증
+        if (value < 0 || value > 100) {
+            logError("SEOUL", value) // 부모가 만든 기능을 그대로 사용함
+            return false
+        }
+        return true
+    }
+}
+
+효과: 각 지역 전문가들이 자신의 비즈니스 로직에만 집중할 수 있는 환경 제공
+
+3. 왜 인터페이스만 쓰지 않고 추상 클래스를 섞어서 쓰는지 정리 핵심 포인트
+
+단일 상속의 한계 극복: 추상 클래스만 쓰면 자바의 특성상 다른 부모를 가질 수 없지만 인터페이스를 섞으면 규격은 유지하면서 유연한 확장이 가능함
+
+코드 중복의 원천 차단: 인터페이스는 로직을 가질 수 없기에 100개의 구현체에 똑같은 로그 코드를 적어야 하는 비효율이 발생하지만 추상 클래스가 이를 해결함
+
+객체의 상태 관리: 추상 클래스는 "마지막 실행 시간"이나 "검증 횟수" 같은 실제 변수(필드)를 가질 수 있어 데이터 상태를 추적하기에 유리함
+
+2일차 결론
+
+"인터페이스는 객체의 '이름표'를 정해주고 추상 클래스는 객체의 '팔다리(공통 기능)'를 미리 만들어준다"
